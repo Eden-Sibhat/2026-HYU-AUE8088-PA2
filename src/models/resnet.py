@@ -1,4 +1,4 @@
-"""ResNet-18 / ResNet-50 (He et al., CVPR 2016) — student implementation.
+"""ResNet-18 / ResNet-50 (He et al., CVPR 2016) — my implementation.
 
 Use of ``torchvision.models.resnet*`` and ``timm`` is forbidden.
 Reference: https://arxiv.org/abs/1512.03385
@@ -28,16 +28,29 @@ class BasicBlock(nn.Module):
 
     def __init__(self, in_c: int, out_c: int, stride: int = 1, downsample: nn.Module | None = None) -> None:
         super().__init__()
-        # TODO: build the residual branch:
-        #   conv3x3(in_c, out_c, stride) -> BN -> ReLU
-        #   conv3x3(out_c, out_c)        -> BN
-        # then add the (possibly downsampled) identity, then ReLU.
-        raise NotImplementedError("Level 1: implement BasicBlock")
+        self.conv1 = conv3x3(in_c, out_c, stride)
+        self.bn1 = nn.BatchNorm2d(out_c)
+        self.relu = nn.ReLU(inplace=True)
+        self.conv2 = conv3x3(out_c, out_c)
+        self.bn2 = nn.BatchNorm2d(out_c)
+        self.downsample = downsample
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         identity = x
-        # TODO: residual branch + skip + ReLU
-        raise NotImplementedError
+
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu(out)
+
+        out = self.conv2(out)
+        out = self.bn2(out)
+
+        if self.downsample is not None:
+            identity = self.downsample(x)
+
+        out = out + identity
+        out = self.relu(out)
+        return out
 
 
 class Bottleneck(nn.Module):
@@ -45,15 +58,36 @@ class Bottleneck(nn.Module):
 
     def __init__(self, in_c: int, mid_c: int, stride: int = 1, downsample: nn.Module | None = None) -> None:
         super().__init__()
-        # TODO: build:
-        #   conv1x1(in_c, mid_c)            -> BN -> ReLU
-        #   conv3x3(mid_c, mid_c, stride)   -> BN -> ReLU
-        #   conv1x1(mid_c, mid_c*expansion) -> BN
-        # plus skip and ReLU.
-        raise NotImplementedError("Level 1: implement Bottleneck")
+        out_c = mid_c * self.expansion
+        self.conv1 = conv1x1(in_c, mid_c)
+        self.bn1 = nn.BatchNorm2d(mid_c)
+        self.conv2 = conv3x3(mid_c, mid_c, stride)
+        self.bn2 = nn.BatchNorm2d(mid_c)
+        self.conv3 = conv1x1(mid_c, out_c)
+        self.bn3 = nn.BatchNorm2d(out_c)
+        self.relu = nn.ReLU(inplace=True)
+        self.downsample = downsample
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        raise NotImplementedError
+        identity = x
+
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu(out)
+
+        out = self.conv2(out)
+        out = self.bn2(out)
+        out = self.relu(out)
+
+        out = self.conv3(out)
+        out = self.bn3(out)
+
+        if self.downsample is not None:
+            identity = self.downsample(x)
+
+        out = out + identity
+        out = self.relu(out)
+        return out
 
 
 class ResNet(nn.Module):
@@ -80,10 +114,21 @@ class ResNet(nn.Module):
         self._init_weights()
 
     def _make_layer(self, block: type[nn.Module], planes: int, blocks: int, stride: int) -> nn.Sequential:
-        # TODO: build a stage of ``blocks`` residual blocks. The first block
-        # may need a 1x1 downsample on the identity if stride != 1 or
-        # in_c != planes * block.expansion.
-        raise NotImplementedError("Level 1: implement _make_layer")
+        downsample = None
+        out_c = planes * block.expansion
+        if stride != 1 or self.in_c != out_c:
+            downsample = nn.Sequential(
+                conv1x1(self.in_c, out_c, stride),
+                nn.BatchNorm2d(out_c),
+            )
+
+        layers: list[nn.Module] = []
+        layers.append(block(self.in_c, planes, stride, downsample))
+        self.in_c = out_c
+        for _ in range(1, blocks):
+            layers.append(block(self.in_c, planes))
+
+        return nn.Sequential(*layers)
 
     def _init_weights(self) -> None:
         for m in self.modules():
