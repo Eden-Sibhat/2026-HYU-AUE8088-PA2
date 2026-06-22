@@ -1,4 +1,5 @@
-"""VGG-16 (Simonyan & Zisserman, ICLR 2015) — student implementation.
+"""VGG-16 (Simonyan & Zisserman, ICLR 2015) — my implementation.
+
 
 You may NOT use ``torchvision.models.vgg16`` or ``timm.create_model``.
 You MAY read those reference implementations and re-type the architecture.
@@ -27,16 +28,24 @@ VGG16_CFG = [
 def make_vgg_layers(cfg: list, batch_norm: bool = True) -> nn.Sequential:
     """Build the convolutional feature extractor from ``cfg``.
 
-    TODO: For each entry in cfg:
-      - "M": append nn.MaxPool2d(kernel_size=2, stride=2)
-      - int v: append Conv2d(in -> v, k=3, p=1) → (BN) → ReLU(inplace=True)
-    Return as nn.Sequential.
+    For each integer entry, append a 3x3 convolution followed by optional
+    batch normalization and ReLU. For each ``"M"`` entry, append a 2x2
+    max-pooling layer. This reproduces the VGG-16 feature extractor.
     """
     layers: list[nn.Module] = []
     in_channels = 3
-
-    # TODO: implement the loop described above.
-    raise NotImplementedError("Level 1: implement make_vgg_layers")
+##updated
+    for v in cfg:
+        if v == "M":
+            layers.append(nn.MaxPool2d(kernel_size=2, stride=2))
+        else:
+            out_channels = int(v)
+            conv = nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1, bias=not batch_norm)
+            if batch_norm:
+                layers.extend([conv, nn.BatchNorm2d(out_channels), nn.ReLU(inplace=True)])
+            else:
+                layers.extend([conv, nn.ReLU(inplace=True)])
+            in_channels = out_channels
 
     return nn.Sequential(*layers)
 
@@ -51,13 +60,15 @@ class VGG16(nn.Module):
         # After 5 maxpool stages, 224x224 -> 7x7. Channels = 512.
         self.avgpool = nn.AdaptiveAvgPool2d((7, 7))
 
-        # TODO: classifier MLP. The original VGG uses:
-        #   Linear(512*7*7, 4096) -> ReLU -> Dropout
-        #   Linear(4096, 4096)    -> ReLU -> Dropout
-        # Here we end at a 4096-dim feature vector and hand it to the
-        # multi-task head.
+        # Original-style VGG classifier. The final 4096-d feature vector is
+        # passed to the shared multi-task head.
         self.classifier = nn.Sequential(
-            # TODO: fill in
+            nn.Linear(512 * 7 * 7, 4096),
+            nn.ReLU(inplace=True),
+            nn.Dropout(p=dropout),
+            nn.Linear(4096, 4096),
+            nn.ReLU(inplace=True),
+            nn.Dropout(p=dropout),
         )
 
         self.head = MultiTaskHead(in_features=4096, dropout=dropout)
@@ -83,3 +94,4 @@ class VGG16(nn.Module):
         x = torch.flatten(x, 1)
         x = self.classifier(x)
         return self.head(x)
+
