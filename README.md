@@ -83,7 +83,7 @@ data/
 > **모델 구현 정책 (Level 1 ~ 2 공통)**
 > `torchvision.models`, `timm`, 기타 사전 정의된 모델 라이브러리의 **모델 코드 사용은 금지** 합니다 (예: `torchvision.models.resnet18()`, `timm.create_model(...)` 등). 공식 구현체나 논문 코드를 **참고하여 직접 타이핑** 하는 것은 허용합니다 — 한 줄씩 따라 적는 과정에서 백본의 구조를 체화하는 것이 본 단계의 목적입니다.
 
-### Level 1 — Milestone Model Implementation (Classic CNNs) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/IRCVLab/2026-HYU-AUE8088-PA2/blob/main/notebooks/level1_classic_cnns.ipynb)
+### Level 1 — Milestone Model Implementation (Classic CNNs) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Eden-Sibhat/2026-HYU-AUE8088-PA2/blob/main/notebooks/level1_classic_cnns.ipynb)
 
 
 - **VGG16** 과 **ResNet-18 / ResNet-50** 을 PyTorch로 **직접 구현**.
